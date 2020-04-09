@@ -138,11 +138,11 @@ namespace Firebase {
         /// This function returns the data from the database reference
         /// </summary>
         /// <returns>The data in the database</returns
-        public async Task<T?> ReadAync<T>() where T : struct {
+        public async Task<T> ReadAync<T>() where T : class {
             string auth = (Firebase.GetInstance().FirebaseAuth.GetCurrentUser().idToken ?? null)?.Insert(0, "&auth=");
             HttpResponseMessage response = await client.GetAsync($"{child}.json?print=pretty{auth}");
 
-            return response.IsSuccessStatusCode ? (T?)JsonConvert.DeserializeObject<T>(await response.Content.ReadAsStringAsync()) : null;
+            return response.IsSuccessStatusCode ? JsonConvert.DeserializeObject<T>(await response.Content.ReadAsStringAsync()) : null;
         }
 
         /// <summary>
@@ -774,6 +774,9 @@ namespace Firebase {
                     /// <param name="key">The key of the entry</param>
                     /// <param name="value">The value of the entry</param>
                     public void AddValue(string key, Value value) => fields.Add(key, value);
+
+                    [JsonIgnore]
+                    public Dictionary<string, Value> Fields => fields;
                 }
 
                 /// <summary>
@@ -790,6 +793,9 @@ namespace Firebase {
                     /// </summary>
                     /// <param name="item">The item to add</param>
                     public void AddValue(Value item) => values.Add(item);
+
+                    [JsonIgnore]
+                    public List<Value> Values => values;
                 }
             }
         }
