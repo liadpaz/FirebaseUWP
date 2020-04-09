@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -777,6 +776,8 @@ namespace Firebase {
 
                     [JsonIgnore]
                     public Dictionary<string, Value> Fields => fields;
+
+                    public override string ToString() => JsonConvert.SerializeObject(this);
                 }
 
                 /// <summary>
@@ -796,6 +797,8 @@ namespace Firebase {
 
                     [JsonIgnore]
                     public List<Value> Values => values;
+
+                    public override string ToString() => JsonConvert.SerializeObject(this);
                 }
             }
         }
