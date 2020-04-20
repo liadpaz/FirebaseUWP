@@ -170,7 +170,7 @@ namespace Firebase {
         /// <summary>
         /// This function returns a database reference to the <c>child</c> of the current reference
         /// </summary>
-        /// <param name="child">the child</param>
+        /// <param name="child">The child</param>
         /// <returns>Database reference to <paramref name="child"/> of the current reference</returns>
         public DatabaseReference Child(string child) => new DatabaseReference($"{this.child}/{child}");
 
@@ -198,7 +198,7 @@ namespace Firebase {
     #region Firestore
 
     /// <summary>
-    /// This class if for the Firestore database
+    /// This class is for the Firestore database
     /// </summary>
     public sealed class Firestore {
 
@@ -211,6 +211,7 @@ namespace Firebase {
             if (client.BaseAddress == null) {
                 client.BaseAddress = new Uri("https://firestore.googleapis.com/");
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/x-www-form-urlencoded"));
             }
         }
 
@@ -253,19 +254,19 @@ namespace Firebase {
         }
 
         /// <summary>
-        /// This function trims the path
+        /// This function adds a leading slash to the path
         /// </summary>
         /// <param name="path">The path</param>
-        /// <returns>The trimmed path</returns>
+        /// <returns>The path with added leading slash</returns>
         /// <example>Input: path/to/document => Output: /path/to/document</example>
-        private static string TrimPath(string path = null) => (path ?? null)?.Insert(0, "/");
+        private static string AddLeadingSlash(string path = null) => (path ?? null)?.Insert(0, "/");
 
         /// <summary>
-        /// This function trims the last path piece
+        /// This function gets the relative path (parent)
         /// </summary>
-        /// <param name="path">The path to trim</param>
-        /// <returns>The path w/o it's last piece</returns>
-        private static string TrimLastPathPiece(string path) => path.Substring(0, path.LastIndexOf("/"));
+        /// <param name="path">The path</param>
+        /// <returns>The relative path (path)</returns>
+        private static string GetRelativePath(string path) => path.Substring(0, path.LastIndexOf("/"));
 
         /// <summary>
         /// This class is for Firestore collection reference
@@ -287,11 +288,22 @@ namespace Firebase {
             /// <summary>
             /// This function creates a document in the Firestore database
             /// </summary>
-            /// <param name="documentName">name of the document, can be null</param>
-            /// <param name="document">the document to create</param>
-            /// <returns>the document created</returns>
+            /// <param name="documentName">Name of the document, can be null</param>
+            /// <param name="document">The document to create</param>
+            /// <returns>The created document</returns>
             public async Task<Document> CreateDocumentAsync(string documentName, Document document) {
-                HttpResponseMessage response = await client.PostAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents{TrimPath(Path)}/{(documentName ?? null)?.Insert(0, "?documentId=")}", new StringContent(document.ToString()));
+                HttpResponseMessage response = await client.PostAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents{AddLeadingSlash(Path)}/{(documentName ?? null)?.Insert(0, "?documentId=")}", new StringContent(document.ToString()));
+
+                return JsonConvert.DeserializeObject<Document>(await response.Content.ReadAsStringAsync());
+            }
+
+            /// <summary>
+            /// This function creates a document in the Firestore database with a random name
+            /// </summary>
+            /// <param name="document">The document to create</param>
+            /// <returns>The created document</returns>
+            public async Task<Document> CreateDocumentAsync(Document document) {
+                HttpResponseMessage response = await client.PostAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents{AddLeadingSlash(Path)}", new StringContent(document.ToString()));
 
                 return JsonConvert.DeserializeObject<Document>(await response.Content.ReadAsStringAsync());
             }
@@ -300,7 +312,7 @@ namespace Firebase {
             /// This function returns the reference to the document in the specified path
             /// </summary>
             /// <param name="path">The path to the document</param>
-            /// <exception cref="ArgumentException">if the path doesn't match a path to a document</exception>
+            /// <exception cref="ArgumentException">If the path doesn't match a path to a document</exception>
             /// <returns>The <see cref="DocumentReference"/> to the document in <paramref name="path"/></returns>
             public DocumentReference GetDocumentReference(string path) {
                 if (documentRegex.IsMatch($"{Path}/{path}")) {
@@ -310,10 +322,10 @@ namespace Firebase {
             }
 
             /// <summary>
-            /// This function returns the <code>DocumentReference</code> parent of the current document reference
+            /// This function returns the <see cref="DocumentReference"/> parent of the current document reference
             /// </summary>
             /// <returns>The <see cref="DocumentReference"/> parent of the current document reference</returns>
-            public DocumentReference GetParent() => new DocumentReference(TrimLastPathPiece(Path));
+            public DocumentReference GetParent() => new DocumentReference(GetRelativePath(Path));
 
             /// <summary>
             /// This function gets the list of the documents in the current path
@@ -325,7 +337,7 @@ namespace Firebase {
             /// <returns>List of the documents in the path</returns>
             public async Task<DocumentList> ListDocumentsAsync(string collectionId = null, int? pageSize = null, string pageToken = null, string orderBy = null) {
                 string query = CreateQueryString(("pageSize", pageSize), ("pageToken", pageToken), ("orderBy", orderBy));
-                HttpResponseMessage response = await client.GetAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents{TrimPath(Path)}/{collectionId}{query}");
+                HttpResponseMessage response = await client.GetAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents{AddLeadingSlash(Path)}/{collectionId}{query}");
 
                 return JsonConvert.DeserializeObject<DocumentList>(await response.Content.ReadAsStringAsync());
             }
@@ -374,7 +386,7 @@ namespace Firebase {
             /// </summary>
             /// <returns><see langword="true"/> if the document deleted, otherwise <see langword="false"/></returns>
             public async Task<bool> DeleteDocumentAsync() {
-                HttpResponseMessage response = await client.DeleteAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents{TrimPath(Path)}");
+                HttpResponseMessage response = await client.DeleteAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents{AddLeadingSlash(Path)}");
 
                 return response.IsSuccessStatusCode;
             }
@@ -384,17 +396,17 @@ namespace Firebase {
             /// </summary>
             /// <returns><see langword="true"/> if succeeded, otherwise <see langword="false"/></returns>
             public async Task<Document> GetAsync() {
-                HttpResponseMessage response = await client.GetAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents{TrimPath(Path)}");
+                HttpResponseMessage response = await client.GetAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents{AddLeadingSlash(Path)}");
 
                 Document doc = JsonConvert.DeserializeObject<Document>(await response.Content.ReadAsStringAsync());
                 return doc.Exists ? doc : null;
             }
 
             /// <summary>
-            /// This function returns the <code>CollectionReference</code> parent of the current document reference
+            /// This function returns the <see cref="CollectionReference"/> parent of the current document reference
             /// </summary>
             /// <returns>The <see cref="CollectionReference"/> parent of the current document reference</returns>
-            public CollectionReference GetParent() => new CollectionReference(TrimLastPathPiece(Path));
+            public CollectionReference GetParent() => new CollectionReference(GetRelativePath(Path));
 
             /// <summary>
             /// This function sets the content of the current document to the specified document, it overrides any content that pre-existed
@@ -411,7 +423,7 @@ namespace Firebase {
             /// <returns>The updated document</returns>
             public async Task<Document> UpdateAsync(Document document, Precondition currentDocument = null) {
                 string query = CreateQueryString(currentDocument != null ? currentDocument.GetQuery() : (null, null));
-                HttpResponseMessage response = await client.PatchAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents{TrimPath(Path)}{query}", new StringContent(document.ToString()));
+                HttpResponseMessage response = await client.PatchAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents{AddLeadingSlash(Path)}{query}", new StringContent(document.ToString()));
 
                 return JsonConvert.DeserializeObject<Document>(await response.Content.ReadAsStringAsync());
             }
@@ -423,7 +435,7 @@ namespace Firebase {
             /// <param name="pageToken">The page token aqquired from this function response</param>
             /// <returns>The list of collections in the path</returns>
             public async Task<CollectionIds> ListCollectionsAsync(int? pageSize = null, string pageToken = null) {
-                HttpResponseMessage response = await client.PostAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents{TrimPath(Path)}:listCollectionIds", new StringContent(new CollectionListIdContent(pageSize, pageToken).ToString()));
+                HttpResponseMessage response = await client.PostAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents{AddLeadingSlash(Path)}:listCollectionIds", new StringContent(new CollectionListIdContent(pageSize, pageToken).ToString()));
 
                 return JsonConvert.DeserializeObject<CollectionIds>(await response.Content.ReadAsStringAsync());
             }
@@ -865,8 +877,7 @@ namespace Firebase {
             /// </summary>
             /// <returns>The started transaction</returns>
             public async Task<Transaction> StartTransaction() {
-                string authString = (Firebase.GetInstance().FirebaseAuth.GetCurrentUser().idToken ?? null)?.Insert(0, "?access_token=");
-                HttpResponseMessage response = await client.PostAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents:beginTransaction{authString}", new StringContent(options.ToString()));
+                HttpResponseMessage response = await client.PostAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents:beginTransaction", new StringContent(options.ToString()));
 
                 if (response.IsSuccessStatusCode) {
                     var pattern = new { transaction = "" };
@@ -975,8 +986,7 @@ namespace Firebase {
             /// </summary>
             /// <returns><see langword="true"/> if committed successfully, otherwise <see langword="false"/></returns>
             public async Task<bool> Commit() {
-                string authString = (Firebase.GetInstance().FirebaseAuth.GetCurrentUser().idToken ?? null)?.Insert(0, "?access_token=");
-                HttpResponseMessage response = await client.PostAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents:commit{authString}", new StringContent(ToString()));
+                HttpResponseMessage response = await client.PostAsync($"v1/projects/{Firebase.ProjectId}/databases/(default)/documents:commit", new StringContent(ToString()));
 
                 return response.IsSuccessStatusCode;
             }
