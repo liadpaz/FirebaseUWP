@@ -121,6 +121,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Firebase.cs" />
+    <Compile Include="FirebaseAuth.cs" />
+    <Compile Include="FirebaseDatabase.cs" />
+    <Compile Include="Firestore.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Properties\FirebaseUWP.rd.xml" />
   </ItemGroup>
